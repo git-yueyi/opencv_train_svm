@@ -46,6 +46,76 @@ void getFileName(string path_,vector<string> & file_name_){
 	file_name_ = dir.GetListFiles(path_,img,addPath);
 }
 
+void test_svm(string svmxml){
+	CvSVM svm;
+
+	svm.load(svmxml.c_str());
+	
+	int NumImgs =  getNumImg(path);
+
+	Mat imgFeature = Mat(1,3787,CV_32FC1,Scalar::all(0));
+
+	folder_names.clear();
+
+	getFoldersName(path,folder_names);
+
+	int n_imgs = 0;
+
+	for (int fidx = 0;fidx<folder_names.size();fidx++)
+	{
+		img_names.clear();
+
+		getFileName(path+"/"+folder_names[fidx],img_names);
+
+		float err = 0.0;
+
+		for (int imgidx = 18 ;imgidx<img_names.size();imgidx++)
+		{
+			Mat img = imread(path+"/"+ folder_names[fidx] +"/"+ img_names[imgidx],0);
+
+			resize(img,img,Size(64,128));
+
+			threshold(img,img,125,255,CV_THRESH_BINARY);
+
+			HOGDescriptor *hog=new HOGDescriptor(cvSize(64,128),cvSize(16,16),cvSize(8,8),cvSize(8,8),9);
+
+			vector<float> descriptors;
+
+			hog->compute(img,descriptors,Size(1,1),Size(0,0));
+
+			for (int desidx = 0;desidx<descriptors.size();desidx++)
+			{
+				imgFeature.at<float>(0,desidx) = descriptors[desidx];
+			}
+
+			cv::Moments moments = cv::moments(img);
+
+			double hu_moments[7];
+
+			cv::HuMoments(moments,hu_moments);
+
+			for (int huidx = 0;huidx<7;huidx++)
+			{
+				imgFeature.at<float>(0,3780+huidx) = hu_moments[huidx];
+			}
+			hog->~HOGDescriptor();
+
+			descriptors.clear();
+
+			img.~Mat();
+
+			
+			if(fidx!=svm.predict(imgFeature)){
+				err  += 1.0;
+			}
+		}
+		//cout<<"当前文件路劲: "<<path+"/"+folder_names[fidx]<<endl;
+		err = err/(float)(img_names.size()-18);
+		cout<<folder_names[fidx]<<" 错误率："<<err<<endl;
+	}
+	
+}
+
 void cal_HogHu(Mat & allHogFeatureMat,Mat & labelMat){
 
 	int NumImgs =  getNumImg(path);
@@ -53,7 +123,6 @@ void cal_HogHu(Mat & allHogFeatureMat,Mat & labelMat){
 	allHogFeatureMat = Mat(NumImgs,3787,CV_32FC1,Scalar::all(1));
 	
 	labelMat = Mat(NumImgs,1,CV_32FC1,Scalar::all(0));
-	
 
 	folder_names.clear();
 
@@ -69,7 +138,7 @@ void cal_HogHu(Mat & allHogFeatureMat,Mat & labelMat){
 
 		getFileName(path+"/"+folder_names[fidx],img_names);
 
-		for (int imgidx=0;imgidx<img_names.size();imgidx++)
+		for (int imgidx=0;imgidx<img_names.size()&&imgidx<18;imgidx++)
 		{
 			cout<<path+"/"+ folder_names[fidx] +"/" + img_names[imgidx]<<endl;
 
@@ -126,7 +195,7 @@ void cal_HogHu(Mat & allHogFeatureMat,Mat & labelMat){
 
 }
 
-void trainsvm(){
+void trainsvm(string svmname){
 
 	Mat TrainSet;
 
@@ -146,58 +215,70 @@ void trainsvm(){
 
 	svm.train( TrainSet, labelMat, Mat(), Mat(), param );//训练数据     
 
-	svm.save("svm_hoghu_char_LINER.xml");
+	svm.save(svmname.c_str());
 }
 
 int main(void){
 
 	namedWindow("img");
 
-	//trainsvm();
+	//trainsvm("svm_hoghu_char_liner18.xml");
 
-	CvSVM svm;
-
-	svm.load("svm_hoghu_char_LINER.xml");
-
-	Mat img = imread("F:\\visual studio 2010\\Projects\\GBpic_rec\\GBpic_rec\\gb\\gb8.bmp",0);
-
-	Mat testData(1,3787,CV_32FC1,Scalar::all(0));
-
-	resize(img,img,Size(64,128));
-
-	threshold(img,img,125,255,CV_THRESH_BINARY);
-
-	imshow("img",img);
-	
-	waitKey(200);
-
-	HOGDescriptor *hog=new HOGDescriptor(cvSize(64,128),cvSize(16,16),cvSize(8,8),cvSize(8,8),9);
-
-	vector<float> descriptors;
-
-	hog->compute(img,descriptors,Size(1,1),Size(0,0));
-
-	for (int hogidx=0;hogidx<descriptors.size();hogidx++)
-	{
-		testData.at<float>(0,hogidx) = descriptors[hogidx];
-	}
-
-	cv::Moments moments = cv::moments(img);
-
-	double hu_moments[7];
-
-	cv::HuMoments(moments,hu_moments);
-
-	for (int huidx=0;huidx<7;huidx++)
-	{
-		testData.at<float>(0,3780+ huidx) = hu_moments[huidx];
-	}
-
-	int ret = svm.predict(testData);
-
-	cout<<ret<<endl;
+	test_svm("svm_hoghu_char_liner18.xml");
 
 	waitKey(0);
+
+	//trainsvm();
+
+	//CvSVM svm;
+
+	//svm.load("svm_hoghu_char_LINER.xml");
+
+	//double  t=(double)cvGetTickCount();
+
+	//Mat img = imread("F:\\visual studio 2010\\Projects\\GBpic_rec\\GBpic_rec\\gb\\gbB.bmp",0);
+
+	//Mat testData(1,3787,CV_32FC1,Scalar::all(0));
+
+	//resize(img,img,Size(64,128));
+
+	//threshold(img,img,125,255,CV_THRESH_BINARY);
+
+	//imshow("img",img);
+	
+	//waitKey(200);
+
+	//HOGDescriptor *hog=new HOGDescriptor(cvSize(64,128),cvSize(16,16),cvSize(8,8),cvSize(8,8),9);
+
+	//vector<float> descriptors;
+
+	//hog->compute(img,descriptors,Size(1,1),Size(0,0));
+
+	//for (int hogidx=0;hogidx<descriptors.size();hogidx++)
+	//{
+	//	testData.at<float>(0,hogidx) = descriptors[hogidx];
+	//}
+
+	//cv::Moments moments = cv::moments(img);
+
+	//double hu_moments[7];
+
+	//cv::HuMoments(moments,hu_moments);
+
+	//for (int huidx=0;huidx<7;huidx++)
+	//{
+	//	testData.at<float>(0,3780+ huidx) = hu_moments[huidx];
+	//}
+
+	//int ret = svm.predict(testData);
+
+	//t=((double)cvGetTickCount() - t)/(cvGetTickFrequency()*1000);
+	//
+	//cout<<"the total time: "<<t<<" ms"<<endl;
+
+	//cout<<ret<<endl;
+
+	//waitKey(0);
 
 	return 0;
 }
