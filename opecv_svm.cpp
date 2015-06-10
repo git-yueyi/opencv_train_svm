@@ -105,6 +105,7 @@ void test_svm(string svmxml){
 			img.~Mat();
 
 			
+			
 			if(fidx!=svm.predict(imgFeature)){
 				err  += 1.0;
 			}
@@ -118,15 +119,15 @@ void test_svm(string svmxml){
 
 void cal_HogHu(Mat & allHogFeatureMat,Mat & labelMat){
 
-	int NumImgs =  getNumImg(path);
+	folder_names.clear();
+
+	getFoldersName(path,folder_names);
+
+	int NumImgs =  folder_names.size() *18;//getNumImg(path);
 
 	allHogFeatureMat = Mat(NumImgs,3787,CV_32FC1,Scalar::all(1));
 	
 	labelMat = Mat(NumImgs,1,CV_32FC1,Scalar::all(0));
-
-	folder_names.clear();
-
-	getFoldersName(path,folder_names);
 
 	int n_imgs = 0;
 
@@ -160,7 +161,7 @@ void cal_HogHu(Mat & allHogFeatureMat,Mat & labelMat){
 
 			hog->compute(img,descriptors,Size(1,1),Size(0,0));
 			
-			labelMat.at<float>(n_imgs,0) = fidx;
+			labelMat.at<float>(n_imgs,0) = folder_names.at(fidx)[0] - '0';
 
 			for (int desidx = 0;desidx<descriptors.size();desidx++)
 			{
@@ -222,9 +223,9 @@ int main(void){
 
 	namedWindow("img");
 
-	//trainsvm("svm_hoghu_char_liner18.xml");
+	trainsvm("svm_hoghu_chars_liner18.xml");
 
-	test_svm("svm_hoghu_char_liner18.xml");
+	test_svm("svm_hoghu_chars_liner18.xml");
 
 	waitKey(0);
 
